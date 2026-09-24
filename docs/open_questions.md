@@ -1,0 +1,25 @@
+# Open questions
+
+These are decisions the design could not settle. Each entry gives the
+default being assumed until it is resolved, and what would resolve it.
+
+| # | Question | Default until resolved | What resolves it | Needed by |
+|---|---|---|---|---|
+| Q1 | **Price data source and licence** for `fin_tools` (daily prices and corporate actions). Free sources vary in redistribution terms. | Build from a source we are licensed to use and **do not publish** the DB; rescale prices (spec §2). Fallback: synthetic price paths calibrated to real volatility. | A licence review of 2–3 candidate sources, plus a decision on whether DBs will ever be published (Q8) | M5 |
+| Q2 | **Synthetic rendering vs real filing HTML tables** for `fin_numeric`. Synthetic rendering may not transfer to real layouts. | Synthetic rendering with style variation | M3/M4 FinQA/TAT-QA results. If base → trained gains on the synthetic test do not show up on FinQA/TAT-QA, build a real-layout eval split (HTML tables aligned to XBRL) | after M4 |
+| Q3 | **Real company names in perturbed items**, or anonymise? Real names make leaks measurable, but pair real names with fake figures. | Real names, with a dataset-card disclaimer; data not published | An ablation measuring leak rate with and without names, plus Q8 | M2 |
+| Q4 | **Which frontier model(s)** to use as baselines, and at what n | One Claude model (current top tier) and one other provider's top model, at n = 1 on the full test and n = 4 on a 500-item subset | The budget ceiling (Q10). The routing work needs at least the three Claude tiers | M2 |
+| Q5 | **Base model:** Qwen3-4B (as briefed) vs Qwen3-4B-Thinking-2507 vs Qwen3.5-4B | Qwen3-4B | The M1 feasibility check (learnable fraction) plus an end-to-end LoRA-GRPO smoke test on each candidate in Unsloth/TRL and prime-rl | M1 |
+| Q6 | **Thinking on or off** during training. Thinking may be more accurate but costs an estimated 3–10× the tokens, which affects cost per item and routing. | Train with thinking on; evaluate both | M1 pass@k with vs without thinking. If the gap is under 3 points on L1–L2, train non-thinking for those levels | M1 |
+| Q7 | **Reward formula consistency** in `fin_numeric`, i.e. give weight to `formula_consistent` | Diagnostic only | M3/M4 spot checks. If "right value, inconsistent formula" exceeds 5% of high scorers, add it at weight 0.05–0.1 and bump the grader version | M4 |
+| Q8 | **Publish datasets/DBs/adapters?** Perturbed figures under real names could be mistaken for real data; licences of sources vary. | Nothing published; code only | A legal/comms decision by the org. If yes, publish with anonymised names and a synthetic-price DB | before any release |
+| Q9 | **`search_filings` corpus:** synthetic snippets (consistent but artificial) vs real filing text with numbers masked | Synthetic snippets | Build a masked real-text prototype, measure leakage of unperturbed numbers on 200 snippets, adopt only if leakage is ~0 | M5 |
+| Q10 | **Compute provider and budget ceiling** | 1× H100 on-demand; about $0.8k–2.8k GPU plus $200–1,000 API through M6 (estimate, design §11) | Budget owner sign-off, then replace the estimates with M1's measured throughput | M1 |
+| Q11 | **Numeric grader constants:** tolerance `r0 = 0.5%`, half-life 1%, cutoff 10%, per-unit floors | As specified in `fin_numeric` §8 | Human calibration: 2 reviewers rate 200 near-miss answers as acceptable or not; fit `r0` and half-life to agree with them | M2 |
+| Q12 | **Multi-turn framework** is picked on paper (verifiers + prime-rl) and not yet proven | verifiers + prime-rl; TRL `environment_factory` as fallback | The M5 spike: a masked multi-turn LoRA step on one GPU, and a check of the verifiers v1 API for per-rollout hidden state | M5 |
+| Q13 | **Qwen3 thinking re-rendering across turns** could make training tokens differ from rollout tokens | Rely on the framework's token-in/token-out path | The M5 mask-correctness test, extended to compare rollout token IDs with training token IDs | M5 |
+| Q14 | **Fault seeding:** shared per group (lower variance) vs per rollout (more coverage) | Shared, seeded by `(item_id, call_index)` | An M6 ablation, if robustness gains stall | M6 |
+| Q15 | **zen-fundamentals fit.** Its first template is merger arbitrage (S-4 / DEFM14A terms), not 10-K metrics | The `extractor` role is the target; no transfer assumed | A zen-fundamentals-specific extraction task and grader, which may justify a third zen-rft task after M6 | M7 |
+| Q16 | **coding-routing-benchmark changes:** configurable model pool and an OpenAI-compatible client | Propose upstream; no fork | Agreement from that repo's maintainers | M7 |
+| Q17 | **Banks, insurers and REITs** are excluded from `fin_numeric` v1 | Excluded | Whether zen-fundamentals or routing consumers need financial-sector coverage | after M4 |
+| Q18 | **FinQA data terms.** The repo is MIT, but no separate data licence was found. TAT-QA data is CC BY 4.0 | Use for internal evaluation only; report scores, don't redistribute items | Check the paper and repo for data terms, or ask the authors | M2 |
